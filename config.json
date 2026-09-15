@@ -1,0 +1,26 @@
+{
+  "_commento": "Configurazione REALE con le tue strutture. Le password NON stanno qui: stanno nel file .env.",
+
+  "login": {
+    "start_url": "https://admin.booking.com/",
+    "reviews_path": "hotel/hoteladmin/extranet_ng/manage/reviews.html",
+    "lang": "it"
+  },
+
+  "previsione": {
+    "recensioni_a_settimana": 5,
+    "voto_medio_nuove_recensioni": 9.0,
+    "settimane_da_proiettare": 12,
+    "voto_obiettivo": 9.0
+  },
+
+  "strutture": [
+    { "id": "acquaderni-rooms",           "nome": "Acquaderni Rooms",            "hotel_id": "4514392" },
+    { "id": "cosmopolitan-bologna",       "nome": "Hotel Cosmopolitan Bologna",  "hotel_id": "186480" },
+    { "id": "grand-hotel-forli",          "nome": "Grand Hotel Forlì",           "hotel_id": "282627" },
+    { "id": "bikini-tropicana",           "nome": "Bikini Tropicana",            "hotel_id": "393976" },
+    { "id": "052-room-breakfast",         "nome": "052 Room and Breakfast",      "hotel_id": "1306283" },
+    { "id": "051-boutique",               "nome": "051 Boutique",                "hotel_id": "3593295" },
+    { "id": "cosmopolitan-central-rooms", "nome": "Cosmopolitan Central Rooms",  "hotel_id": "4406613" }
+  ]
+}

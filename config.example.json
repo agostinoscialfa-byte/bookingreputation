@@ -18,13 +18,14 @@
 
   "strutture": [
     {
-      "id": "acquaderni-rooms",
-      "nome": "Acquaderni Rooms",
-      "hotel_id": "4514392"
+      "id": "struttura-1",
+      "nome": "Nome prima struttura",
+      "hotel_id": "METTI_QUI_L_HOTEL_ID",
+      "_commento": "L'hotel_id si legge nell'URL della pagina recensioni: ...reviews.html?hotel_id=XXXXXX"
     },
     {
       "id": "struttura-2",
-      "nome": "Seconda struttura (metti il nome)",
+      "nome": "Nome seconda struttura",
       "hotel_id": "METTI_QUI_L_HOTEL_ID"
     }
   ]
