@@ -6,3 +6,4 @@
 # quindi il comando "playwright install" potrebbe non servire.
 
 playwright==1.48.0
+openpyxl==3.1.5

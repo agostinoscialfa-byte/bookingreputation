@@ -24,8 +24,10 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, Page, TimeoutError as PWTimeout
 
 from .storage import Snapshot, oggi_iso, DATA_DIR
+from . import parser_recensioni
 
 DEBUG_DIR = DATA_DIR / "debug"
+DOWNLOAD_DIR = DATA_DIR / "downloads"
 
 # Percorso del browser gia' installato in questo ambiente (se presente).
 _BROWSERS = os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "")
@@ -189,6 +191,56 @@ def _url_recensioni(start_url: str, reviews_path: str, hotel_id: str,
     return url
 
 
+# Testi possibili del pulsante di download (Booking cambia lingua/etichetta).
+_BOTTONI_DOWNLOAD = [
+    'button:has-text("Scarica le recensioni")',
+    'button:has-text("Scarica")',
+    'button:has-text("Download reviews")',
+    'button:has-text("Download")',
+    'button:has-text("Esporta")',
+    'a:has-text("Scarica le recensioni")',
+]
+
+
+def _scarica_recensioni(page: Page, hotel_id: str) -> Path | None:
+    """
+    Clicca 'Scarica le recensioni' e salva il file scaricato in data/downloads/.
+    Ritorna il percorso del file, oppure None se non parte nessun download.
+    """
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    for sel in _BOTTONI_DOWNLOAD:
+        try:
+            bottone = page.locator(sel).first
+            if bottone.count() == 0:
+                continue
+            # Aspetto l'evento di download mentre clicco il pulsante.
+            with page.expect_download(timeout=20000) as info:
+                bottone.click(timeout=8000)
+                # A volte compare una finestra con un secondo pulsante di conferma.
+                try:
+                    conferma = page.locator(
+                        'button:has-text("Scarica"), button:has-text("Esporta"), '
+                        'button:has-text("Conferma"), button:has-text("Download")'
+                    ).last
+                    if conferma.count() > 0:
+                        conferma.click(timeout=3000)
+                except Exception:
+                    pass
+            download = info.value
+            nome_orig = download.suggested_filename or f"recensioni_{hotel_id}.csv"
+            estensione = Path(nome_orig).suffix or ".csv"
+            destinazione = DOWNLOAD_DIR / f"{oggi_iso()}_{hotel_id}{estensione}"
+            download.save_as(str(destinazione))
+            print(f"  File scaricato: {destinazione.name}")
+            return destinazione
+        except PWTimeout:
+            continue
+        except Exception as e:
+            print(f"  (nota: tentativo di download fallito con '{sel}': {e})")
+            continue
+    return None
+
+
 def raccogli_dati(config: dict) -> list[Snapshot]:
     """
     Funzione principale: fa login, legge i dati e restituisce le fotografie di oggi.
@@ -256,11 +308,34 @@ def raccogli_dati(config: dict) -> list[Snapshot]:
 
                 _salva_debug(page, f"recensioni_{hotel_id}")
 
-                voto, num = _estrai_voto_e_recensioni(page)
+                voto = None
+                num = None
+
+                # 1) Metodo preferito: scarico il file e lo leggo (piu' preciso).
+                file_scaricato = _scarica_recensioni(page, hotel_id)
+                if file_scaricato is not None:
+                    try:
+                        res = parser_recensioni.analizza_file(file_scaricato)
+                        if res.voto_medio is not None:
+                            voto = res.voto_medio
+                            num = res.num_recensioni
+                            print(f"  Dal file: voto medio {voto} su {num} recensioni "
+                                  f"(colonna '{res.colonna_voto_usata}').")
+                    except Exception as e:
+                        print(f"  (nota: non sono riuscito a leggere il file scaricato: {e})")
+
+                # 2) Ripiego: leggo il voto direttamente dalla pagina.
+                if voto is None:
+                    voto, num = _estrai_voto_e_recensioni(page)
+                    if voto is not None:
+                        print(f"  Dalla pagina: voto {voto}, recensioni {num}")
+
                 if voto is None:
                     print(f"  ATTENZIONE: non ho trovato il voto per '{nome}'. "
-                          f"Guarda data/debug/recensioni_{hotel_id}.png / .html.")
+                          f"Guarda data/debug/recensioni_{hotel_id}.png / .html "
+                          f"(e il file in data/downloads/, se presente).")
                     continue
+
                 risultati.append(Snapshot(
                     date=oggi_iso(),
                     property_id=pid,

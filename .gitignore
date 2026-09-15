@@ -5,6 +5,7 @@
 # ---- Dati generati dal programma ----
 data/history.csv
 data/debug/
+data/downloads/
 data/dashboard.html
 
 # ---- Python ----
