@@ -5,6 +5,7 @@ run.py  -  Il programma principale.
 Usalo dal terminale cosi':
 
   python3 run.py demo        -> crea dati FINTI e apre il cruscotto (per provare subito)
+  python3 run.py test        -> prova UNA sola struttura (per il primo test del login)
   python3 run.py scrape      -> entra in Booking, legge i voti e li salva nello storico
   python3 run.py dashboard   -> rigenera SOLO il cruscotto dai dati gia' salvati
   python3 run.py giornaliero -> fa tutto: scarica da Booking + salva + cruscotto (uso quotidiano)
@@ -128,11 +129,18 @@ def comando_demo() -> None:
     print("Aprilo con doppio clic (o dal browser).")
 
 
-def comando_scrape(genera_anche_dashboard: bool = False) -> None:
+def comando_scrape(genera_anche_dashboard: bool = False, solo_prima: bool = False) -> None:
     """Entra in Booking e salva i voti di oggi nello storico."""
     carica_env()
     from src import booking_scraper  # import qui: serve playwright solo per questo comando
     config = carica_config()
+    if solo_prima:
+        # Modalita' TEST: provo solo la prima struttura valida.
+        valide = [s for s in config.get("strutture", [])
+                  if s.get("hotel_id") and "METTI" not in str(s.get("hotel_id"))]
+        config = {**config, "strutture": valide[:1]}
+        nome = valide[0]["nome"] if valide else "?"
+        print(f"MODALITA' TEST: provo solo '{nome}'.")
     print("Mi collego a Booking (admin.booking.com)...")
     try:
         nuovi = booking_scraper.raccogli_dati(config)
@@ -165,6 +173,8 @@ def main() -> None:
         comando_dashboard()
     elif comando == "giornaliero":
         comando_scrape(genera_anche_dashboard=True)
+    elif comando == "test":
+        comando_scrape(genera_anche_dashboard=True, solo_prima=True)
     else:
         print(__doc__)
 
