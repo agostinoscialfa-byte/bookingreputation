@@ -1,0 +1,31 @@
+{
+  "_commento": "COPIA questo file in 'config.json' e adattalo. Qui NON ci sono password (quelle stanno nel file .env).",
+
+  "login": {
+    "_commento": "Indirizzi di Booking. reviews_path e' la pagina delle recensioni; il programma le aggiunge da solo ?hotel_id=... per ogni struttura.",
+    "start_url": "https://admin.booking.com/",
+    "reviews_path": "hotel/hoteladmin/extranet_ng/manage/reviews.html",
+    "lang": "it"
+  },
+
+  "previsione": {
+    "_commento": "Assunzioni per la proiezione: 'se tengo questo livello, come cambia il voto?'",
+    "recensioni_a_settimana": 5,
+    "voto_medio_nuove_recensioni": 9.0,
+    "settimane_da_proiettare": 12,
+    "voto_obiettivo": 9.0
+  },
+
+  "strutture": [
+    {
+      "id": "acquaderni-rooms",
+      "nome": "Acquaderni Rooms",
+      "hotel_id": "4514392"
+    },
+    {
+      "id": "struttura-2",
+      "nome": "Seconda struttura (metti il nome)",
+      "hotel_id": "METTI_QUI_L_HOTEL_ID"
+    }
+  ]
+}

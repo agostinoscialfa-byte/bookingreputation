@@ -1,0 +1,8 @@
+# Dipendenze del progetto.
+# Installale con:  pip3 install -r requirements.txt
+# e poi (solo la prima volta):  python3 -m playwright install chromium
+#
+# Nota: in questo ambiente il browser Chromium e' gia' presente,
+# quindi il comando "playwright install" potrebbe non servire.
+
+playwright==1.48.0

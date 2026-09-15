@@ -1,0 +1,21 @@
+# ---- Segreti: NON devono MAI finire su GitHub ----
+.env
+*.secret
+
+# ---- Dati generati dal programma ----
+data/history.csv
+data/debug/
+data/dashboard.html
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# ---- Playwright / browser ----
+# (i browser sono gia' installati nell'ambiente, non li committiamo)
+
+# ---- Sistema ----
+.DS_Store
