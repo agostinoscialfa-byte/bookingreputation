@@ -24,7 +24,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, Page, TimeoutError as PWTimeout
 
 from .storage import Snapshot, oggi_iso, DATA_DIR
-from . import parser_recensioni
+from . import modello_booking
 
 DEBUG_DIR = DATA_DIR / "debug"
 DOWNLOAD_DIR = DATA_DIR / "downloads"
@@ -309,25 +309,28 @@ def raccogli_dati(config: dict) -> list[Snapshot]:
                 _salva_debug(page, f"recensioni_{hotel_id}")
 
                 voto = None
-                num = None
+                num = pace = rate = 0
 
-                # 1) Metodo preferito: scarico il file e lo leggo (piu' preciso).
+                # 1) Metodo preferito: scarico il file e applico il TUO modello (EWMA).
                 file_scaricato = _scarica_recensioni(page, hotel_id)
                 if file_scaricato is not None:
                     try:
-                        res = parser_recensioni.analizza_file(file_scaricato)
-                        if res.voto_medio is not None:
-                            voto = res.voto_medio
-                            num = res.num_recensioni
-                            print(f"  Dal file: voto medio {voto} su {num} recensioni "
-                                  f"(colonna '{res.colonna_voto_usata}').")
+                        a = modello_booking.analizza_file(file_scaricato)
+                        if a is not None:
+                            voto = a.calc
+                            num = a.n_totali
+                            pace = a.pace
+                            rate = a.rate
+                            print(f"  Dal file: voto calcolato {voto} su {num} recensioni "
+                                  f"(ritmo 3 mesi {pace}, {rate} recensioni/mese, trend {a.trend}).")
                     except Exception as e:
-                        print(f"  (nota: non sono riuscito a leggere il file scaricato: {e})")
+                        print(f"  (nota: non sono riuscito ad analizzare il file scaricato: {e})")
 
                 # 2) Ripiego: leggo il voto direttamente dalla pagina.
                 if voto is None:
-                    voto, num = _estrai_voto_e_recensioni(page)
+                    voto, num_pag = _estrai_voto_e_recensioni(page)
                     if voto is not None:
+                        num = num_pag or 0
                         print(f"  Dalla pagina: voto {voto}, recensioni {num}")
 
                 if voto is None:
@@ -341,7 +344,9 @@ def raccogli_dati(config: dict) -> list[Snapshot]:
                     property_id=pid,
                     property_name=nome,
                     score=voto,
-                    num_reviews=num if num is not None else 0,
+                    num_reviews=num,
+                    pace=pace,
+                    rate=rate,
                 ))
                 print(f"  OK '{nome}': voto {voto}, recensioni {num}")
         finally:

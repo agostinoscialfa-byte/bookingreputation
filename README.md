@@ -91,20 +91,19 @@ Questo entra in Booking, salva i voti di oggi nello storico e aggiorna il crusco
 
 ---
 
-## 🧠 Come viene calcolata la previsione
+## 🧠 Come viene calcolata la previsione (modello EWMA)
 
-Il voto Booking è, in pratica, la **media** dei voti delle singole recensioni (ognuna da 1 a 10).
-Quindi, partendo dal tuo voto attuale `S` su `N` recensioni, se arrivano `k` nuove recensioni
-con voto medio `L`, il nuovo voto diventa:
+Non usiamo una media "piatta", ma una **media pesata sul tempo** (EWMA), che imita il modo in cui
+Booking dà meno importanza alle recensioni vecchie:
 
-```
-nuovo_voto = (S · N  +  L · k) / (N + k)
-```
+- ogni recensione pesa di più se è recente; il peso **si dimezza ogni 6 mesi**;
+- il **voto calcolato** è la media dei voti pesata così → stima ciò che Booking mostra;
+- il **ritmo ultimi 3 mesi** (`pace`) è la media semplice degli ultimi 90 giorni: la qualità che tieni adesso;
+- la **proiezione** simula i prossimi 24 mesi aggiungendo ogni mese `rate` nuove recensioni al voto `pace`
+  e ricalcolando l'EWMA: così vedi *quando* il voto toccherà ogni "gradino" (8,4 → 8,5 → …).
 
-Più recensioni hai già, più il voto è "pesante" da spostare. La previsione usa le tue ipotesi
-(recensioni a settimana e voto medio) per stimare l'andamento dei prossimi mesi.
-È un'indicazione realistica, non una garanzia: Booking dà anche meno peso alle recensioni
-molto vecchie, cosa che qui approssimiamo.
+Lo stesso modello viene applicato anche ai **sottoreparti** (Pulizia, Personale, Comfort, …).
+È un'indicazione realistica, non una garanzia. Il "cervello" del calcolo è in `src/modello_booking.py`.
 
 ---
 

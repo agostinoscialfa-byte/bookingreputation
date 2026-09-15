@@ -17,17 +17,18 @@ Prima di 'scrape'/'giornaliero':
 
 from __future__ import annotations
 
+import csv
 import json
 import random
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 # Rende importabili i moduli dentro 'src'
 BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE))
 
-from src import storage, dashboard  # noqa: E402
+from src import storage, dashboard, modello_booking  # noqa: E402
 
 
 def carica_config() -> dict:
@@ -53,26 +54,76 @@ def carica_env() -> None:
         os.environ.setdefault(chiave.strip(), valore.strip())
 
 
+def _genera_csv_finto(hotel_id: str, n: int, trend: float) -> Path:
+    """Crea un file recensioni finto (come l'export Booking) e lo salva in data/downloads/."""
+    download_dir = storage.DATA_DIR / "downloads"
+    download_dir.mkdir(parents=True, exist_ok=True)
+    oggi = datetime.now()
+
+    def voto(base):
+        return max(4, min(10, round(random.gauss(base, 1.2))))
+
+    righe = []
+    for _ in range(n):
+        giorni_fa = random.randint(0, 720)
+        d = oggi - timedelta(days=giorni_fa)
+        # Le recensioni recenti hanno un voto medio un filo diverso (trend +/-).
+        base = 8.7 + (720 - giorni_fa) / 720 * trend
+        righe.append({
+            "Nome struttura": hotel_id,
+            "Data della recensione": d.strftime("%Y-%m-%d"),
+            "Punteggio della recensione": str(voto(base)).replace(".", ","),
+            "Pulizia": voto(base + 0.1),
+            "Staff": voto(base + 0.3),
+            "Comfort": voto(base - 0.1),
+            "Servizi": voto(base - 0.2),
+            "Posizione": voto(base + 0.5),
+            "Qualità/prezzo": voto(base - 0.3),
+        })
+    percorso = download_dir / f"{date.today().isoformat()}_{hotel_id}.csv"
+    with percorso.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(righe[0].keys()), delimiter=";")
+        w.writeheader()
+        w.writerows(righe)
+    return percorso
+
+
 def comando_demo() -> None:
-    """Crea 3 settimane di dati finti per 2 strutture, cosi' vedi il cruscotto pieno."""
+    """Crea recensioni finte + storico per 2 strutture, cosi' vedi il cruscotto pieno."""
     print("Creo dati DEMO (finti) per farti vedere il cruscotto...")
     config = carica_config()
-    strutture = config.get("strutture") or [
-        {"id": "struttura-1", "nome": "Hotel Demo Mare"},
-        {"id": "struttura-2", "nome": "Hotel Demo Città"},
+    # La demo usa SEMPRE strutture chiaramente finte, per non confondersi con i dati veri.
+    valide = [
+        {"id": "demo-mare", "nome": "Hotel Demo Mare (esempio)", "hotel_id": "999001"},
+        {"id": "demo-citta", "nome": "Hotel Demo Città (esempio)", "hotel_id": "999002"},
     ]
+
     snapshots = []
-    for s in strutture[:2] if len(strutture) >= 2 else strutture:
-        base_voto = random.uniform(8.4, 9.1)
-        base_rec = random.randint(180, 900)
-        # 21 giorni di storico, con piccole variazioni realistiche.
+    for idx, s in enumerate(valide):
+        hotel_id = str(s["hotel_id"])
+        trend = 0.6 if idx == 0 else -0.4  # una sale, una scende, per far vedere entrambi
+        n = random.randint(220, 480)
+        csv_path = _genera_csv_finto(hotel_id, n, trend)
+
+        # Ricostruisco lo storico degli ultimi 21 giorni applicando il modello "a quel giorno".
+        recensioni, _ = modello_booking.carica_recensioni(csv_path)
         for g in range(21, -1, -1):
-            giorno = (date.today() - timedelta(days=g)).isoformat()
-            voto = round(base_voto + random.uniform(-0.05, 0.05) + (21 - g) * 0.004, 2)
-            rec = base_rec + (21 - g) * random.randint(0, 2)
-            snapshots.append(storage.Snapshot(giorno, s["id"], s["nome"], voto, rec))
+            D = datetime.now() - timedelta(days=g)
+            sub = [r for r in recensioni if r.d <= D]
+            if len(sub) < 5:
+                continue
+            calc = modello_booking.ewma(sub, D)
+            w3 = modello_booking.media_finestra(sub, 90) or modello_booking.media_finestra(sub, 180)
+            pace = w3[0] if w3 else calc
+            recenti = [r for r in sub if r.d >= D - timedelta(days=180)]
+            rate = max(1, round(len(recenti) / 6))
+            snapshots.append(storage.Snapshot(
+                D.date().isoformat(), s["id"], s["nome"],
+                round(calc, 2), len(sub), round(pace, 2), rate,
+            ))
+
     storage.salva_snapshot(snapshots)
-    percorso = dashboard.genera_html(config)
+    percorso = dashboard.genera_html({"strutture": valide, "previsione": config.get("previsione", {})})
     print(f"Fatto! Dati demo salvati e cruscotto creato:\n  {percorso}")
     print("Aprilo con doppio clic (o dal browser).")
 

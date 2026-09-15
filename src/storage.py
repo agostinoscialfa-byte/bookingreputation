@@ -22,7 +22,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 HISTORY_FILE = DATA_DIR / "history.csv"
 
 # Le colonne del file storico, in ordine.
-CAMPI = ["date", "property_id", "property_name", "score", "num_reviews"]
+CAMPI = ["date", "property_id", "property_name", "score", "num_reviews", "pace", "rate"]
 
 
 @dataclass
@@ -31,8 +31,10 @@ class Snapshot:
     date: str            # formato AAAA-MM-GG, es. "2026-09-15"
     property_id: str
     property_name: str
-    score: float         # voto Booking, scala 1-10 (es. 8.7)
+    score: float         # voto calcolato (EWMA), scala 1-10 (es. 8.7)
     num_reviews: int     # numero totale di recensioni
+    pace: float = 0.0    # media ultimi 3 mesi (qualita' recente)
+    rate: int = 0        # recensioni al mese
 
 
 def _assicura_cartella() -> None:
@@ -53,6 +55,9 @@ def leggi_storico() -> list[Snapshot]:
                     property_name=r["property_name"],
                     score=float(r["score"]),
                     num_reviews=int(r["num_reviews"]),
+                    # I campi pace/rate potrebbero non esserci in file vecchi: uso 0.
+                    pace=float(r.get("pace") or 0),
+                    rate=int(float(r.get("rate") or 0)),
                 )
             )
     return righe
