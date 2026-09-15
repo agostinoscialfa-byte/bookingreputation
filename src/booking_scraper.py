@@ -277,6 +277,15 @@ def raccogli_dati(config: dict) -> list[Snapshot]:
         launch_kwargs = {"headless": headless}
         if _CHROMIUM:
             launch_kwargs["executable_path"] = _CHROMIUM
+        if headless:
+            # I Chromium recenti hanno rimosso la vecchia modalita' headless
+            # (--headless=old) che Playwright usa di default: forziamo quella nuova.
+            # --no-sandbox e --disable-dev-shm-usage servono per girare dentro un container.
+            launch_kwargs["headless"] = False
+            launch_kwargs["args"] = [
+                "--headless=new", "--no-sandbox",
+                "--disable-dev-shm-usage", "--disable-gpu",
+            ]
         browser = p.chromium.launch(**launch_kwargs)
         context = browser.new_context(
             viewport={"width": 1400, "height": 900},
